@@ -3,7 +3,7 @@ from pandas.api.types import is_integer_dtype  # type: ignore
 from functools import partial
 from typing import Any, Optional
 from pdcatcontext._pointer import Pointer, PointerName
-from pdcatcontext.custom_methods import _series_add
+from pdcatcontext.custom_methods import series_add
 
 
 def _get_integer_type_map(list_p_df: list[Pointer]) -> dict[int, dict[str, Any]]:
@@ -57,7 +57,7 @@ class CatContext:
             self._reset_index()
 
         # Override series methods
-        pd.Series.__add__ = partial(_series_add, default_add=self._default_series_add)
+        pd.Series.__add__ = series_add(self._default_series_add)
         pd.Series.apply = self._series_apply(self._default_series_apply)
         pd.DataFrame.merge = self._frame_merge(self._default_frame_merge)
 
