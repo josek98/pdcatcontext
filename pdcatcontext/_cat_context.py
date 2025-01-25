@@ -31,12 +31,16 @@ class CatContext:
         list_p_df: list[PointerName],
         cast_back_integers: bool = True,
         reset_index: bool = True,
+        observed: bool = True,
+        as_index: bool = True
     ) -> None:
         if self.GLOBALS is None:
             raise ValueError("Globals not set. Use 'set_globals' method.")
 
         self._cast_back_integers = cast_back_integers
-        self._reeset_index = reset_index
+        self._reset_index = reset_index
+        self._observed = observed
+        self._as_index = as_index
         self._list_p_df: list[Pointer] = [Pointer(p) for p in list_p_df]
 
         self._integer_dtypes = _get_integer_type_map(self._list_p_df)
@@ -45,6 +49,7 @@ class CatContext:
         self._default_series_add = pd.Series.__add__
         self._default_series_apply = pd.Series.apply
         self._default_frame_merge = pd.DataFrame.merge
+        self._default_frame_groupby = pd.DataFrame.groupby
 
     def __enter__(self) -> None:
         # Harmonize categories across DataFrames
@@ -52,25 +57,27 @@ class CatContext:
         self._categorize_integers()
         self._unify_categories()
 
-        if self._reeset_index:
-            self._reset_index()
+        if self._reset_index:
+            self._reset_index_method()
 
         # Override series methods
         pd.Series.__add__ = series_add(self._default_series_add)
         pd.Series.apply = self._series_apply(self._default_series_apply)
         pd.DataFrame.merge = self._frame_merge(self._default_frame_merge)
+        pd.DataFrame.groupby = self._frame_groupby(self._default_frame_groupby)
 
     def __exit__(self, exc_type, exc_value, traceback):
         # Restore overriden operations
         pd.Series.__add__ = self._default_series_add
         pd.Series.apply = self._default_series_apply
         pd.DataFrame.merge = self._default_frame_merge
+        pd.DataFrame.groupby = self._default_frame_groupby
 
         # Cast integer columns back to their original type
         if self._cast_back_integers:
             self._recast_integer_types()
 
-    def _reset_index(self) -> None:
+    def _reset_index_method(self) -> None:
         """Reset index for all DataFrames"""
         for p_df in self._list_p_df:
             p_df.dereference.reset_index(drop=True, inplace=True)
@@ -137,3 +144,13 @@ class CatContext:
             return default_merge(self_frame, other, *args, **kwargs)
 
         return _custom_merge
+    
+    def _frame_groupby(self, default_groupby: Callable) -> Callable: 
+        def _custom_groupby(self_frame: pd.DataFrame, *args, **kwargs):
+            if 'observed' not in kwargs:
+                kwargs['observed'] = self._observed
+            if 'as_index' not in kwargs:
+                kwargs['as_index'] = self._as_index
+            return default_groupby(self_frame, *args, **kwargs)
+        
+        return _custom_groupby
