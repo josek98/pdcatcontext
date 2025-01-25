@@ -1,7 +1,6 @@
 import pandas as pd  # type: ignore
 from pandas.api.types import is_integer_dtype  # type: ignore
-from functools import partial
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 from pdcatcontext._pointer import Pointer, PointerName
 from pdcatcontext.custom_methods import series_add
 
@@ -71,12 +70,12 @@ class CatContext:
         if self._cast_back_integers:
             self._recast_integer_types()
 
-    def _reset_index(self):
+    def _reset_index(self) -> None:
         """Reset index for all DataFrames"""
         for p_df in self._list_p_df:
             p_df.dereference.reset_index(drop=True, inplace=True)
 
-    def _categorize_strings(self):
+    def _categorize_strings(self) -> None:
         """Cast categorical type to string (object) columns"""
         for p_df in self._list_p_df:
             cat_map = {
@@ -84,7 +83,7 @@ class CatContext:
             }
             p_df.dereference = p_df.dereference.astype(cat_map)
 
-    def _categorize_integers(self):
+    def _categorize_integers(self) -> None:
         """Cast integer type to integer columns"""
         for p_df in self._list_p_df:
             cat_map = {
@@ -92,7 +91,7 @@ class CatContext:
             }
             p_df.dereference = p_df.dereference.astype(cat_map)
 
-    def _unify_categories(self):
+    def _unify_categories(self) -> None:
         """Unify categories for columns that are named the same"""
         all_columns = set.union(
             *[
@@ -112,7 +111,7 @@ class CatContext:
             for p_df in filter(lambda p_df: col in p_df.columns, self._list_p_df):
                 p_df.dereference[col] = p_df.dereference[col].astype(dtype)
 
-    def _recast_integer_types(self):
+    def _recast_integer_types(self) -> None:
         """Recast integer type columns to their original integer types after categorization.
         Variables names are used here to point to the dataframe because user might shadowed the variable
         inside the context."""
@@ -122,8 +121,8 @@ class CatContext:
             p_df.dereference = p_df.dereference.astype(int_map)
 
     # region Custom Methods
-    def _series_apply(self, default_apply):
-        def _custom_apply(self_series, func, *args, **kwargs):
+    def _series_apply(self, default_apply: Callable) -> Callable:
+        def _custom_apply(self_series: pd.Series, func: Callable, *args, **kwargs):
             series_2_return = default_apply(self_series, func, *args, **kwargs)
             if self_series.dtype.name == "category":
                 series_2_return = series_2_return.astype("category")
@@ -132,8 +131,8 @@ class CatContext:
 
         return _custom_apply
 
-    def _frame_merge(self, default_merge):
-        def _custom_merge(self_frame, other, *args, **kwargs):
+    def _frame_merge(self, default_merge: Callable) -> Callable:
+        def _custom_merge(self_frame: pd.DataFrame, other: object, *args, **kwargs):
             self._unify_categories()
             return default_merge(self_frame, other, *args, **kwargs)
 
