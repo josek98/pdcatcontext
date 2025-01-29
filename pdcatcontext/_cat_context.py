@@ -64,7 +64,7 @@ class CatContext:
         pd.Series.__add__ = series_add(self._default_series_add)
         pd.Series.apply = self._series_apply(self._default_series_apply)
         pd.DataFrame.merge = self._frame_merge(self._default_frame_merge)
-        pd.DataFrame.groupby = self._frame_groupby(self._default_frame_groupby)
+        pd.DataFrame.groupby = self._frame_groupby()
 
     def __exit__(self, exc_type, exc_value, traceback):
         # Restore overriden operations
@@ -145,10 +145,10 @@ class CatContext:
 
         return _custom_merge
     
-    def _frame_groupby(self, default_groupby: Callable) -> Callable: 
+    def _frame_groupby(self) -> Callable: 
         def _custom_groupby(self_frame: pd.DataFrame, *args, **kwargs):
             kwargs.setdefault("observed", self._observed)
             kwargs.setdefault("as_index", self._as_index)
-            return default_groupby(self_frame, *args, **kwargs)
+            return self._default_frame_groupby(self_frame, *args, **kwargs)
         
         return _custom_groupby
