@@ -147,10 +147,8 @@ class CatContext:
     
     def _frame_groupby(self, default_groupby: Callable) -> Callable: 
         def _custom_groupby(self_frame: pd.DataFrame, *args, **kwargs):
-            if 'observed' not in kwargs:
-                kwargs['observed'] = self._observed
-            if 'as_index' not in kwargs:
-                kwargs['as_index'] = self._as_index
+            kwargs.setdefault("observed", self._observed)
+            kwargs.setdefault("as_index", self._as_index)
             return default_groupby(self_frame, *args, **kwargs)
         
         return _custom_groupby
