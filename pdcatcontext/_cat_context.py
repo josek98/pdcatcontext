@@ -1,4 +1,5 @@
 import pandas as pd  # type: ignore
+import inspect
 from pandas.api.types import is_integer_dtype  # type: ignore
 from typing import Any, Optional, Callable
 from pdcatcontext._pointer import Pointer, PointerName
@@ -19,12 +20,6 @@ def _get_integer_type_map(list_p_df: list[Pointer]) -> dict[int, dict[str, Any]]
 
 # region CatContext
 class CatContext:
-    GLOBALS: Optional[dict[str, Any]] = None
-
-    @classmethod
-    def set_globals(cls, globals_: dict[str, Any]) -> None:
-        cls.GLOBALS = globals_
-        Pointer.set_globals(globals_)
 
     def __init__(
         self,
@@ -32,10 +27,17 @@ class CatContext:
         cast_back_integers: bool = True,
         reset_index: bool = True,
         observed: bool = True,
-        as_index: bool = True
+        as_index: bool = True,
     ) -> None:
-        if self.GLOBALS is None:
-            raise ValueError("Globals not set. Use 'set_globals' method.")
+        # Capture the caller's frame and locals
+        current_frame = inspect.currentframe()  
+        if current_frame is None:
+            raise RuntimeError("Failed to retrieve the current frame")
+        
+        caller_frame = current_frame.f_back
+        caller_locals = caller_frame.f_locals if caller_frame else globals()
+        
+        Pointer.set_globals(caller_locals, caller_frame)
 
         self._cast_back_integers = cast_back_integers
         self._reset_index = reset_index
@@ -51,7 +53,7 @@ class CatContext:
         self._default_frame_merge = pd.DataFrame.merge
         self._default_frame_groupby = pd.DataFrame.groupby
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> "CatContext":
         # Harmonize categories across DataFrames
         self._categorize_strings()
         self._categorize_integers()
@@ -65,6 +67,8 @@ class CatContext:
         pd.Series.apply = self._series_apply(self._default_series_apply)
         pd.DataFrame.merge = self._frame_merge(self._default_frame_merge)
         pd.DataFrame.groupby = self._frame_groupby()
+
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         # Restore overriden operations
@@ -144,11 +148,11 @@ class CatContext:
             return default_merge(self_frame, other, *args, **kwargs)
 
         return _custom_merge
-    
-    def _frame_groupby(self) -> Callable: 
+
+    def _frame_groupby(self) -> Callable:
         def _custom_groupby(self_frame: pd.DataFrame, *args, **kwargs):
             kwargs.setdefault("observed", self._observed)
             kwargs.setdefault("as_index", self._as_index)
             return self._default_frame_groupby(self_frame, *args, **kwargs)
-        
+
         return _custom_groupby

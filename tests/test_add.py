@@ -1,6 +1,7 @@
 import pandas as pd  # type: ignore
 from pdcatcontext import CatContext
 
+
 def df_init() -> pd.DataFrame:
     df_ = pd.DataFrame(
         {
@@ -15,11 +16,12 @@ def df_init() -> pd.DataFrame:
 
 class TestAdd:
     def test_concat_string_columns(self):
-        CatContext.set_globals(globals())
         df = df_init()
         df_copy = df.copy()
         df_copy["E"] = df_copy["A"] + df_copy["B"]
         with CatContext(["df"]):
             df["E"] = df["A"] + df["B"]
 
-        assert df.equals(df_copy)
+        assert df.equals(
+            df_copy.astype({"A": "category", "B": "category", "E": "category"})
+        )
