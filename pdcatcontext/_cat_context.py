@@ -24,23 +24,23 @@ class CatContext:
     def __init__(
         self,
         list_p_df: list[PointerName],
+        ignore_columns: list[str] = [],
         cast_back_integers: bool = True,
-        reset_index: bool = True,
         observed: bool = True,
         as_index: bool = True,
     ) -> None:
         # Capture the caller's frame and locals
-        current_frame = inspect.currentframe()  
+        current_frame = inspect.currentframe()
         if current_frame is None:
             raise RuntimeError("Failed to retrieve the current frame")
-        
+
         caller_frame = current_frame.f_back
         caller_locals = caller_frame.f_locals if caller_frame else globals()
-        
+
         Pointer.set_globals(caller_locals, caller_frame)
 
+        self._ignore_columns = ignore_columns
         self._cast_back_integers = cast_back_integers
-        self._reset_index = reset_index
         self._observed = observed
         self._as_index = as_index
         self._list_p_df: list[Pointer] = [Pointer(p) for p in list_p_df]
@@ -58,9 +58,6 @@ class CatContext:
         self._categorize_strings()
         self._categorize_integers()
         self._unify_categories()
-
-        if self._reset_index:
-            self._reset_index_method()
 
         # Override series methods
         pd.Series.__add__ = series_add(self._default_series_add)
@@ -81,6 +78,7 @@ class CatContext:
         if self._cast_back_integers:
             self._recast_integer_types()
 
+    # Deprecated
     def _reset_index_method(self) -> None:
         """Reset index for all DataFrames"""
         for p_df in self._list_p_df:
@@ -90,7 +88,9 @@ class CatContext:
         """Cast categorical type to string (object) columns"""
         for p_df in self._list_p_df:
             cat_map = {
-                c: "category" for c in p_df.select_dtypes(include="object").columns
+                c: "category"
+                for c in p_df.select_dtypes(include="object").columns
+                if c not in self._ignore_columns
             }
             p_df.dereference = p_df.dereference.astype(cat_map)
 
@@ -98,7 +98,9 @@ class CatContext:
         """Cast integer type to integer columns"""
         for p_df in self._list_p_df:
             cat_map = {
-                c: "category" for c in p_df.select_dtypes(include="integer").columns
+                c: "category"
+                for c in p_df.select_dtypes(include="integer").columns
+                if c not in self._ignore_columns
             }
             p_df.dereference = p_df.dereference.astype(cat_map)
 
