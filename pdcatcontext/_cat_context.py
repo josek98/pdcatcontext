@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import pandas as pd  # type: ignore
 import inspect
-from pandas.api.types import is_integer_dtype  # type: ignore
+from pandas.api.types import is_integer_dtype, union_categoricals  # type: ignore
 from typing import Any, Optional, Callable
 from pdcatcontext._pointer import Pointer, PointerName
 from pdcatcontext.custom_methods import series_add
@@ -53,17 +55,17 @@ class CatContext:
         self._default_frame_merge = pd.DataFrame.merge
         self._default_frame_groupby = pd.DataFrame.groupby
 
-    def __enter__(self) -> "CatContext":
+    def __enter__(self) -> CatContext:
         # Harmonize categories across DataFrames
         self._categorize_strings()
         self._categorize_integers()
         self._unify_categories()
 
         # Override series methods
-        pd.Series.__add__ = series_add(self._default_series_add)
-        pd.Series.apply = self._series_apply(self._default_series_apply)
-        pd.DataFrame.merge = self._frame_merge(self._default_frame_merge)
-        pd.DataFrame.groupby = self._frame_groupby()
+        pd.Series.__add__ = series_add(self._default_series_add)  # type: ignore
+        pd.Series.apply = self._series_apply(self._default_series_apply)  # type: ignore
+        pd.DataFrame.merge = self._frame_merge(self._default_frame_merge)  # type: ignore
+        pd.DataFrame.groupby = self._frame_groupby()  # type: ignore
 
         return self
 
@@ -113,14 +115,14 @@ class CatContext:
             ]
         )
         for col in all_columns:
-            values = set.union(
-                *[
-                    set(p_df.dereference[col].cat.categories)
+            categories = union_categoricals(
+                [
+                    p_df.dereference[col]
                     for p_df in self._list_p_df
                     if col in p_df.columns
                 ]
-            )
-            dtype = pd.CategoricalDtype(values, ordered=False)
+            ).categories
+            dtype = pd.CategoricalDtype(categories=categories, ordered=False)  # type: ignore
             for p_df in filter(lambda p_df: col in p_df.columns, self._list_p_df):
                 p_df.dereference[col] = p_df.dereference[col].astype(dtype)
 

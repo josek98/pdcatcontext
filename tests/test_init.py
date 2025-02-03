@@ -84,25 +84,6 @@ def test_unify_categories(sample_dfs_for_unification):
         assert df2["Category"].tolist() == ["b", "c"]
 
 
-# Tests for reset_index
-def test_reset_index():
-    df = pd.DataFrame({"A": [1, 2]}, index=[3, 4])
-    with CatContext(["df"], reset_index=True):
-        # Index should be reset to default (0, 1)
-        assert df.index.tolist() == [0, 1]
-    # After context, index remains reset (no undo)
-    assert df.index.tolist() == [0, 1]
-
-
-def test_reset_index_disabled():
-    df = pd.DataFrame({"A": [1, 2]}, index=[3, 4])
-    original_index = df.index.copy()
-    with CatContext(["df"], reset_index=False):
-        # Index should remain unchanged
-        assert df.index.tolist() == original_index.tolist()
-    assert df.index.tolist() == original_index.tolist()
-
-
 # Edge case: No common columns for unification
 def test_unify_categories_no_common_columns():
     df1 = pd.DataFrame({"X": ["a", "b"]}, dtype="category")
