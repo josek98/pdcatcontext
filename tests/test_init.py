@@ -107,8 +107,13 @@ def test_merge():
         df2_test["Z"] = ["B", "B"]
         df_result_test = pd.merge(df1_test, df2_test)
 
+    df1 = df1.astype({"X":"category"})
+    df2 = df2.astype({"Y": "category"})
     df1["Z"] = ["A", "B"]
     df2["Z"] = ["B", "B"]
+    cat = pd.CategoricalDtype(["A", "B"])
+    df1["Z"] = df1["Z"].astype(cat)
+    df2["Z"] = df2["Z"].astype(cat)
     df_result = pd.merge(df1, df2)
 
     assert df_result_test.equals(
