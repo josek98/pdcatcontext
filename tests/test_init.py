@@ -92,3 +92,25 @@ def test_unify_categories_no_common_columns():
         # No changes expected
         assert list(df1["X"].cat.categories) == ["a", "b"]
         assert list(df2["Y"].cat.categories) == ["c", "d"]
+
+
+# Test merging
+def test_merge():
+    df1 = pd.DataFrame({"X": ["a", "b"]})
+    df2 = pd.DataFrame({"Y": ["c", "d"]})
+
+    df1_test = df1.copy()
+    df2_test = df2.copy()
+
+    with CatContext(["df1_test", "df2_test"]):
+        df1_test["Z"] = ["A", "B"]
+        df2_test["Z"] = ["B", "B"]
+        df_result_test = pd.merge(df1_test, df2_test)
+
+    df1["Z"] = ["A", "B"]
+    df2["Z"] = ["B", "B"]
+    df_result = pd.merge(df1, df2)
+
+    assert df_result_test.equals(
+        df_result.astype({c: "category" for c in df_result.columns})
+    )

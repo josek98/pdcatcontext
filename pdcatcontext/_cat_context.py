@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import pandas as pd  # type: ignore
 import inspect
+import ctypes
 from pandas.api.types import is_integer_dtype, union_categoricals  # type: ignore
-from typing import Any, Optional, Callable
-from pdcatcontext._pointer import Pointer, PointerName
+from typing import Any, Callable
+from pdcatcontext._pointer import Pointer, PointerName, _locals_to_fast
 from pdcatcontext.custom_methods import series_add
 
 
@@ -36,10 +37,10 @@ class CatContext:
         if current_frame is None:
             raise RuntimeError("Failed to retrieve the current frame")
 
-        caller_frame = current_frame.f_back
-        caller_locals = caller_frame.f_locals if caller_frame else globals()
+        self._caller_frame = current_frame.f_back
+        caller_locals = self._caller_frame.f_locals if self._caller_frame else globals()
 
-        Pointer.set_globals(caller_locals, caller_frame)
+        Pointer.set_globals(caller_locals, self._caller_frame)
 
         self._ignore_columns = ignore_columns
         self._cast_back_integers = cast_back_integers
@@ -53,6 +54,7 @@ class CatContext:
         self._default_series_add = pd.Series.__add__
         self._default_series_apply = pd.Series.apply
         self._default_frame_merge = pd.DataFrame.merge
+        self._default_top_merge = pd.merge
         self._default_frame_groupby = pd.DataFrame.groupby
 
     def __enter__(self) -> CatContext:
@@ -65,6 +67,7 @@ class CatContext:
         pd.Series.__add__ = series_add(self._default_series_add)  # type: ignore
         pd.Series.apply = self._series_apply(self._default_series_apply)  # type: ignore
         pd.DataFrame.merge = self._frame_merge(self._default_frame_merge)  # type: ignore
+        pd.merge = self._top_merge(self._default_top_merge)  # type: ignore
         pd.DataFrame.groupby = self._frame_groupby()  # type: ignore
 
         return self
@@ -74,6 +77,7 @@ class CatContext:
         pd.Series.__add__ = self._default_series_add
         pd.Series.apply = self._default_series_apply
         pd.DataFrame.merge = self._default_frame_merge
+        pd.merge = self._default_top_merge
         pd.DataFrame.groupby = self._default_frame_groupby
 
         # Cast integer columns back to their original type
@@ -148,10 +152,22 @@ class CatContext:
 
     def _frame_merge(self, default_merge: Callable) -> Callable:
         def _custom_merge(self_frame: pd.DataFrame, other: object, *args, **kwargs):
+            self._categorize_strings()
+            self._categorize_integers()
             self._unify_categories()
             return default_merge(self_frame, other, *args, **kwargs)
 
         return _custom_merge
+    
+    def _top_merge(self, default_top_merge: Callable) -> Callable:
+        def _custom_top_merge(left: pd.DataFrame, right: pd.DataFrame, *args, **kargs):
+            self._categorize_strings()
+            self._categorize_integers()
+            self._unify_categories()
+
+            return default_top_merge(left, right, *args, **kargs)
+        
+        return _custom_top_merge
 
     def _frame_groupby(self) -> Callable:
         def _custom_groupby(self_frame: pd.DataFrame, *args, **kwargs):
