@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import pandas as pd  # type: ignore
 import inspect
-import ctypes
 from pandas.api.types import is_integer_dtype, union_categoricals  # type: ignore
 from typing import Any, Callable
-from pdcatcontext._pointer import Pointer, PointerName, _locals_to_fast
+from pdcatcontext._pointer import Pointer, PointerName
 from pdcatcontext.custom_methods import series_add
 
 
@@ -32,15 +31,14 @@ class CatContext:
         observed: bool = True,
         as_index: bool = True,
     ) -> None:
-        # Capture the caller's frame and locals
         current_frame = inspect.currentframe()
         if current_frame is None:
             raise RuntimeError("Failed to retrieve the current frame")
 
-        self._caller_frame = current_frame.f_back
-        caller_locals = self._caller_frame.f_locals if self._caller_frame else globals()
+        caller_frame = current_frame.f_back
+        caller_locals = caller_frame.f_locals if caller_frame else globals()
 
-        Pointer.set_globals(caller_locals, self._caller_frame)
+        Pointer.set_globals(caller_locals, caller_frame)
 
         self._ignore_columns = ignore_columns
         self._cast_back_integers = cast_back_integers
@@ -84,12 +82,30 @@ class CatContext:
         if self._cast_back_integers:
             self._recast_integer_types()
 
-    # Deprecated
-    def _reset_index_method(self) -> None:
-        """Reset index for all DataFrames"""
-        for p_df in self._list_p_df:
-            p_df.dereference.reset_index(drop=True, inplace=True)
+    # region Public methods
+    def add(self, values: PointerName | list[PointerName]) -> None:
+        """Add tracking of the given dataframe pointers to the context
 
+        Parameters
+        ----------
+        values : PointerName | list[PointerName]
+            Value or list of the string names of the variables we want to add to the tracking
+        """
+
+        _values: list[Pointer]
+        if not isinstance(values, list):
+            _values = [Pointer(values)]
+        else:
+            _values = [Pointer(p) for p in values]
+
+        self._list_p_df.extend(_values)
+        self._categorize_strings()
+        self._categorize_integers()
+        self._unify_categories()
+
+        self._integer_dtypes = _get_integer_type_map(self._list_p_df)
+
+    # region Private methods
     def _categorize_strings(self) -> None:
         """Cast categorical type to string (object) columns"""
         for p_df in self._list_p_df:
@@ -158,15 +174,24 @@ class CatContext:
             return default_merge(self_frame, other, *args, **kwargs)
 
         return _custom_merge
-    
+
     def _top_merge(self, default_top_merge: Callable) -> Callable:
         def _custom_top_merge(left: pd.DataFrame, right: pd.DataFrame, *args, **kargs):
+
+            left_match = [p for p in self._list_p_df if left is p.dereference]
+            right_match = [p for p in self._list_p_df if right is p.dereference]
+
             self._categorize_strings()
             self._categorize_integers()
             self._unify_categories()
 
+            if left_match:
+                left = left_match[0].dereference
+            if right_match:
+                right = right_match[0].dereference
+
             return default_top_merge(left, right, *args, **kargs)
-        
+
         return _custom_top_merge
 
     def _frame_groupby(self) -> Callable:
