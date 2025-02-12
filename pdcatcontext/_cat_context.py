@@ -168,9 +168,19 @@ class CatContext:
 
     def _frame_merge(self, default_merge: Callable) -> Callable:
         def _custom_merge(self_frame: pd.DataFrame, other: object, *args, **kwargs):
+
+            self_match = [p for p in self._list_p_df if self_frame is p.dereference]
+            other_match = [p for p in self._list_p_df if other is p.dereference]
+
             self._categorize_strings()
             self._categorize_integers()
             self._unify_categories()
+
+            if self_match:
+                self_frame = self_match[0].dereference
+            if other_match:
+                other = other_match[0].dereference
+                
             return default_merge(self_frame, other, *args, **kwargs)
 
         return _custom_merge
