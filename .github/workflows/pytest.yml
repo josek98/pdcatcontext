@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       matrix:
-        python-version: [3.12.3]
+        python-version: [3.11.0]
     runs-on: ubuntu-latest
 
     steps:
