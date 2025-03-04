@@ -169,3 +169,14 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Ignore .ipynb files
+*ipynb
+.ipynb
+
+# Tasks.txt
+tasks.txt
+
+# vscode 
+.vscode
+.venv 
