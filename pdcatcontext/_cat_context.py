@@ -22,6 +22,11 @@ def _get_integer_type_map(list_p_df: list[Pointer]) -> dict[int, dict[str, Any]]
 
 # region CatContext
 class CatContext:
+    """Context manager for handling categorical data in pandas DataFrames.
+    This context manager allows for the automatic categorization of string and integer columns while 
+    unifying categories across multiple DataFrames. It also provides methods to add new DataFrames to the context
+    and overrides certain pandas operations to ensure consistent behavior across DataFrames.
+    """
 
     def __init__(
         self,
@@ -32,6 +37,28 @@ class CatContext:
         observed: bool = True,
         as_index: bool = True,
     ) -> None:
+        """Initialize the CatContext.
+
+        Parameters
+        ----------
+        list_p_df : list[PointerName]
+            List of DataFrame pointers to include in the context.
+        ignore_columns : list[str], optional
+            List of columns to ignore during categorization, by default []
+        categorize_integers : bool, optional
+            Whether to categorize integer columns, by default False
+        cast_back_integers : bool, optional
+            Whether to cast integer columns back to their original type, by default True
+        observed : bool, optional
+            Whether to use observed categories for categorical columns, by default True
+        as_index : bool, optional
+            Whether to use the DataFrame index for categorical columns, by default True
+
+        Raises
+        ------
+        RuntimeError
+            _description_
+        """
         current_frame = inspect.currentframe()
         if current_frame is None:
             raise RuntimeError("Failed to retrieve the current frame")
