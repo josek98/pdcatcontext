@@ -27,6 +27,7 @@ class CatContext:
         self,
         list_p_df: list[PointerName],
         ignore_columns: list[str] = [],
+        categorize_integers: bool = False,
         cast_back_integers: bool = True,
         observed: bool = True,
         as_index: bool = True,
@@ -41,6 +42,7 @@ class CatContext:
         Pointer.set_globals(caller_locals, caller_frame)
 
         self._ignore_columns = ignore_columns
+        self._call_cat_integers = categorize_integers
         self._cast_back_integers = cast_back_integers
         self._observed = observed
         self._as_index = as_index
@@ -58,7 +60,9 @@ class CatContext:
     def __enter__(self) -> CatContext:
         # Harmonize categories across DataFrames
         self._categorize_strings()
-        self._categorize_integers()
+        if self._call_cat_integers:
+            self._categorize_integers()
+
         self._unify_categories()
 
         # Override series methods
@@ -79,7 +83,7 @@ class CatContext:
         pd.DataFrame.groupby = self._default_frame_groupby
 
         # Cast integer columns back to their original type
-        if self._cast_back_integers:
+        if self._call_cat_integers and self._cast_back_integers:
             self._recast_integer_types()
 
     # region Public methods
@@ -173,14 +177,15 @@ class CatContext:
             other_match = [p for p in self._list_p_df if other is p.dereference]
 
             self._categorize_strings()
-            self._categorize_integers()
+            if self._call_cat_integers:
+                self._categorize_integers()
             self._unify_categories()
 
             if self_match:
                 self_frame = self_match[0].dereference
             if other_match:
                 other = other_match[0].dereference
-                
+
             return default_merge(self_frame, other, *args, **kwargs)
 
         return _custom_merge

@@ -30,7 +30,7 @@ def sample_dfs_for_unification():
 # Tests for _categorize_strings
 def test_categorize_strings_and_integers(sample_df_with_strings):
     df = sample_df_with_strings
-    with CatContext(["df"]):
+    with CatContext(["df"], categorize_integers=True):
         # Object columns should be categorized
         assert isinstance(df["A"].dtype, pd.CategoricalDtype)
         assert isinstance(df["C"].dtype, pd.CategoricalDtype)
@@ -40,7 +40,7 @@ def test_categorize_strings_and_integers(sample_df_with_strings):
 
 def test_no_string_columns():
     df = pd.DataFrame({"X": [1, 2], "Y": [3, 4]})
-    with CatContext(["df"]):
+    with CatContext(["df"], categorize_integers=True):
         # Integer columns should still be categorized
         assert isinstance(df["X"].dtype, pd.CategoricalDtype)
         assert isinstance(df["Y"].dtype, pd.CategoricalDtype)
@@ -51,7 +51,7 @@ def test_categorize_integers_with_castback(sample_df_with_integers):
     df = sample_df_with_integers
     original_dtypes = df.dtypes.to_dict()
 
-    with CatContext(["df"], cast_back_integers=True):
+    with CatContext(["df"], categorize_integers=True, cast_back_integers=True):
         # Integers should be categorized during the context
         assert df["D"].dtype == "category"
         assert df["E"].dtype == "category"
@@ -63,7 +63,7 @@ def test_categorize_integers_with_castback(sample_df_with_integers):
 
 def test_categorize_integers_without_castback(sample_df_with_integers):
     df = sample_df_with_integers
-    with CatContext(["df"], cast_back_integers=False):
+    with CatContext(["df"], categorize_integers=True, cast_back_integers=False):
         pass  # Context exits without reverting
 
     # Categories should remain
@@ -107,7 +107,7 @@ def test_merge():
         df2_test["Z"] = ["B", "B"]
         df_result_test = pd.merge(df1_test, df2_test)
 
-    df1 = df1.astype({"X":"category"})
+    df1 = df1.astype({"X": "category"})
     df2 = df2.astype({"Y": "category"})
     df1["Z"] = ["A", "B"]
     df2["Z"] = ["B", "B"]
