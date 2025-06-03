@@ -13,6 +13,10 @@ def _locals_to_fast(frame):
 PointerName: TypeAlias = str
 
 class Pointer:
+    """Pointer class for referencing variables in a specific scope.
+    This class allows you to create a pointer to a variable by its name,
+    and dereference it to access or modify the variable's value.
+    """
     GLOBALS: dict[str, Any] = globals()
     FRAME: Optional[FrameType] = None  # Track the frame for local variables
 

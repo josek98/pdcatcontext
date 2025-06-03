@@ -22,15 +22,43 @@ def _get_integer_type_map(list_p_df: list[Pointer]) -> dict[int, dict[str, Any]]
 
 # region CatContext
 class CatContext:
+    """Context manager for handling categorical data in pandas DataFrames.
+    This context manager allows for the automatic categorization of string and integer columns while 
+    unifying categories across multiple DataFrames. It also provides methods to add new DataFrames to the context
+    and overrides certain pandas operations to ensure consistent behavior across DataFrames.
+    """
 
     def __init__(
         self,
         list_p_df: list[PointerName],
         ignore_columns: list[str] = [],
+        categorize_integers: bool = False,
         cast_back_integers: bool = True,
         observed: bool = True,
         as_index: bool = True,
     ) -> None:
+        """Initialize the CatContext.
+
+        Parameters
+        ----------
+        list_p_df : list[PointerName]
+            List of DataFrame pointers to include in the context.
+        ignore_columns : list[str], optional
+            List of columns to ignore during categorization, by default []
+        categorize_integers : bool, optional
+            Whether to categorize integer columns, by default False
+        cast_back_integers : bool, optional
+            Whether to cast integer columns back to their original type, by default True
+        observed : bool, optional
+            Whether to use observed categories for categorical columns, by default True
+        as_index : bool, optional
+            Whether to use the DataFrame index for categorical columns, by default True
+
+        Raises
+        ------
+        RuntimeError
+            _description_
+        """
         current_frame = inspect.currentframe()
         if current_frame is None:
             raise RuntimeError("Failed to retrieve the current frame")
@@ -41,6 +69,7 @@ class CatContext:
         Pointer.set_globals(caller_locals, caller_frame)
 
         self._ignore_columns = ignore_columns
+        self._call_cat_integers = categorize_integers
         self._cast_back_integers = cast_back_integers
         self._observed = observed
         self._as_index = as_index
@@ -58,7 +87,9 @@ class CatContext:
     def __enter__(self) -> CatContext:
         # Harmonize categories across DataFrames
         self._categorize_strings()
-        self._categorize_integers()
+        if self._call_cat_integers:
+            self._categorize_integers()
+
         self._unify_categories()
 
         # Override series methods
@@ -79,7 +110,7 @@ class CatContext:
         pd.DataFrame.groupby = self._default_frame_groupby
 
         # Cast integer columns back to their original type
-        if self._cast_back_integers:
+        if self._call_cat_integers and self._cast_back_integers:
             self._recast_integer_types()
 
     # region Public methods
@@ -173,14 +204,15 @@ class CatContext:
             other_match = [p for p in self._list_p_df if other is p.dereference]
 
             self._categorize_strings()
-            self._categorize_integers()
+            if self._call_cat_integers:
+                self._categorize_integers()
             self._unify_categories()
 
             if self_match:
                 self_frame = self_match[0].dereference
             if other_match:
                 other = other_match[0].dereference
-                
+
             return default_merge(self_frame, other, *args, **kwargs)
 
         return _custom_merge

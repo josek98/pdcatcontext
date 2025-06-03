@@ -5,7 +5,7 @@ with open("README.md", "r",) as f:
 
 setup(
     name="pdcatcontext",
-    version="0.1.0a1",
+    version="0.1.0b",
     description="Easy use of pandas categorical datatype to optimize dataframe operations time and memory usage",
     long_description=long_description,
     long_description_content_type="text/markdown",
