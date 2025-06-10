@@ -1,11 +1,14 @@
-from setuptools import setup, find_packages #type: ignore
+from setuptools import setup, find_packages  # type: ignore
 
-with open("README.md", "r",) as f: 
+with open(
+    "README.md",
+    "r",
+) as f:
     long_description = f.read()
 
 setup(
     name="pdcatcontext",
-    version="0.1.0b",
+    version="0.1.0",
     description="Easy use of pandas categorical datatype to optimize dataframe operations time and memory usage",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -15,7 +18,5 @@ setup(
     packages=find_packages(),
     python_requires=">=3.10",
     install_requires=[],
-    extras_require={
-        "dev": ["pytest>=7.0", "twine>=4.0.2"]
-    }
+    extras_require={"dev": ["pytest>=7.0", "twine>=4.0.2"]},
 )
