@@ -41,6 +41,61 @@ Some of the regular pandas dataframe methods are overridden when working inside 
 
 - `pd.DataFrame.groupby`: The default behaviour of `groupby` when there are categorical columns in the columns to group by list is to get all combinations of the categories, which can lead to a very large number of groups. This problem can be natively solved by using the `observed=True` parameter. Inside the context, this parameter is set by default to `True` so you don't have to worry about it. It is possible to control this behaviour by setting the `observed` parameter to `False` in the context manager initialization. We also provide the hability to set the `as_index` parameter to `False` by default at context initialization, so you don't have to set it every time you use `groupby`.
 
+## Aditional features
+
+Maybe you only need an easy way to cast and unify categorical columns on your dataframes and not use any of the overridden methods that the CatContext manager provides. You may also have a quite big list of dataframes and they may even not be attached to a variable name. For this case this library also includes a function called `categorize_and_unify` that receives a list of dataframes instead of a list of variable names. This function manage the categorization and unification of categorical columns in the same way as the `CatContext` does and also allows you to control what columns may be categorize. Also implements a specialized managmenet for datetime columns, so you are allowed to categorize datetime columns as well and decide wheter to made them a sorted categorical column or not. You can even decide to make the datetime categories with the full range of the datetime columns so you are allowed later to make comparisons. An example is provided below:
+
+```python
+import pandas as pd
+from pdcatcontext import categorize_and_unify
+
+my_list = [
+    pd.DataFrame(
+        {
+            "Date": [pd.Timestamp(2025, 1, 3), pd.Timestamp(2025, 1, 1)],
+            "Names": ["Alice", "Bob"],
+            "Numbers": [1, 2],
+        }
+    ),
+    pd.DataFrame(
+        {
+            "Date": [pd.Timestamp(2025, 1, 5), pd.Timestamp(2025, 1, 2)],
+            "Names": ["Charlie", "David"],
+            "Numbers": [3, 4],
+        }
+    ),
+]
+categorize_and_unify(
+    my_list,
+    objects=True,
+    strings=True,
+    integers=True,
+    datetimes=True,
+    sorted_datetime=True,
+    full_range_datetime=True,
+)
+```
+
+This code categorize the columns into the following categories:
+
+```python
+my_list[0]["Date"].dtype = my_list[1]["Date"].dtype = CategoricalDtype(
+    categories=['2025-01-01', '2025-01-02', '2025-01-03', '2025-01-04','2025-01-05'],
+    ordered=True, 
+    categories_dtype=datetime64[ns]
+)
+my_list[0]["Names"].dtype = my_list[1]["Names"].dtype = CategoricalDtype(
+    categories=['Alice', 'Bob', 'Charlie', 'David'], 
+    ordered=False, 
+    categories_dtype=object
+)
+my_list[0]["Numbers"].dtype = my_list[1]["Numbers"].dtype = CategoricalDtype(
+    categories=[1, 2, 3, 4], 
+    ordered=False, 
+    categories_dtype=int64
+)
+```
+
 ## More to come
 
 This library is still in development and more features will be added in the future. Some of the features that are planned to be added are:
